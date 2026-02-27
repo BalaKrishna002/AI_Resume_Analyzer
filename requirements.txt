@@ -7,5 +7,3 @@ openai
 python-dotenv
 pydantic
 pypdf
-json
-datetime

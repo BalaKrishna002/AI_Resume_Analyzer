@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>AI Resume Analyzer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Poppins', sans-serif;
+}
+
+body {
+  background: linear-gradient(120deg, #eef2f7, #f8fafc);
+  padding: 40px;
+  color: #1e293b;
+}
+
+.container {
+  max-width: 1100px;
+  margin: auto;
+}
+
+h1 {
+  text-align: center;
+  font-size: 38px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #1e3a8a;
+}
+
+.subtitle {
+  text-align: center;
+  color: #64748b;
+  margin-bottom: 40px;
+}
+
+.card {
+  background: white;
+  border-radius: 18px;
+  padding: 30px;
+  margin-bottom: 30px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.05);
+}
+
+textarea, input[type="file"] {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  margin-top: 10px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+textarea {
+  height: 140px;
+  resize: none;
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  background: linear-gradient(90deg, #3b82f6, #6366f1);
+  color: white;
+  transition: 0.3s;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59,130,246,0.3);
+}
+
+.section-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.result-section {
+  display: none;
+}
+
+/* PIE CHART */
+.score-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 30px;
+}
+
+.score-circle {
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+  background: conic-gradient(#3b82f6 0%, #e2e8f0 0%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: background 1s ease;
+}
+
+.score-circle::before {
+  content: "";
+  position: absolute;
+  width: 130px;
+  height: 130px;
+  background: white;
+  border-radius: 50%;
+}
+
+.score-text {
+  position: absolute;
+  font-size: 28px;
+  font-weight: 700;
+  color: #1e3a8a;
+}
+
+.skills-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.skill-chip {
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.matching {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.missing {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.info-box {
+  background: #f8fafc;
+  padding: 20px;
+  border-radius: 14px;
+  margin-top: 10px;
+}
+
+.suggestion-item {
+  margin-bottom: 8px;
+  padding-left: 14px;
+  position: relative;
+}
+
+.suggestion-item::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: #2563eb;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<h1>AI Resume Analyzer</h1>
+<p class="subtitle">Smart Resume vs Job Description Evaluation</p>
+
+<div class="card">
+  <label><strong>Upload Resume (PDF)</strong></label>
+  <input type="file" id="resume">
+
+  <label><strong>Paste Job Description</strong></label>
+  <textarea id="jobDescription"></textarea>
+
+  <button onclick="analyzeResume()">Analyze Resume</button>
+</div>
+
+<div class="card result-section" id="results">
+
+  <div class="section-title">Overall Match Score</div>
+
+  <div class="score-wrapper">
+    <div class="score-circle" id="scoreCircle">
+      <div class="score-text" id="scoreText">0%</div>
+    </div>
+  </div>
+
+  <div class="section-title">Matching Skills</div>
+  <div class="skills-container" id="matchingSkills"></div>
+
+  <div class="section-title">Missing Skills</div>
+  <div class="skills-container" id="missingSkills"></div>
+
+  <div class="section-title">Experience Comparison</div>
+  <div class="info-box">
+    <p><strong>Required Experience:</strong>
+      <span id="requiredExp"></span>
+    </p>
+    <p><strong>Candidate Experience:</strong>
+      <span id="candidateExp"></span> years
+    </p>
+    <p><strong>Gap Analysis:</strong></p>
+    <p id="gapAnalysis"></p>
+  </div>
+
+  <div class="section-title">Improvement Suggestions</div>
+  <div class="info-box" id="suggestions"></div>
+
+</div>
+
+</div>
+
+<script>
+async function analyzeResume() {
+
+  const file = document.getElementById("resume").files[0];
+  const jobDescription = document.getElementById("jobDescription").value;
+
+  if (!file || !jobDescription) {
+    alert("Upload resume and paste job description.");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("resume", file);
+  formData.append("job_description", jobDescription);
+
+  const response = await fetch("/analyze", {
+    method: "POST",
+    body: formData
+  });
+
+  const data = await response.json();
+
+  document.getElementById("results").style.display = "block";
+
+  const score = data.overall_match_score;
+  document.getElementById("scoreText").innerText = score + "%";
+
+  const circle = document.getElementById("scoreCircle");
+  circle.style.background =
+    `conic-gradient(#3b82f6 ${score}%, #e2e8f0 ${score}%)`;
+
+  document.getElementById("requiredExp").innerText =
+    data.required_experience_min + " - " + data.required_experience_max + " years";
+
+  document.getElementById("candidateExp").innerText =
+    data.candidate_experience_years;
+
+  document.getElementById("gapAnalysis").innerText =
+    data.experience_gap_analysis;
+
+  const matchingDiv = document.getElementById("matchingSkills");
+  matchingDiv.innerHTML = "";
+  data.matching_skills.forEach(skill => {
+    matchingDiv.innerHTML += `<div class="skill-chip matching">${skill}</div>`;
+  });
+
+  const missingDiv = document.getElementById("missingSkills");
+  missingDiv.innerHTML = "";
+  data.missing_skills.forEach(skill => {
+    missingDiv.innerHTML += `<div class="skill-chip missing">${skill}</div>`;
+  });
+
+  const suggestionsDiv = document.getElementById("suggestions");
+  suggestionsDiv.innerHTML = "";
+  data.improvement_suggestions.forEach(item => {
+    suggestionsDiv.innerHTML += `<div class="suggestion-item">${item}</div>`;
+  });
+}
+</script>
+
+</body>
+</html>
